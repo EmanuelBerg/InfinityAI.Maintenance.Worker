@@ -4,7 +4,6 @@ using InfinityAI.Maintenance.Worker.Data;
 using InfinityAI.Maintenance.Worker.Models;
 using InfinityAI.Maintenance.Worker.Services.Handlers;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -12,7 +11,7 @@ namespace InfinityAI.Maintenance.Worker.Services;
 
 public sealed class MaintenanceWorkerService(
     IServiceScopeFactory scopeFactory,
-    IOptions<RabbitMqOptions> rabbitMqOptions,
+    IConfiguration configuration,
     ILogger<MaintenanceWorkerService> logger) : BackgroundService
 {
     private const string QueueName = "maintenance-jobs";
@@ -21,22 +20,18 @@ public sealed class MaintenanceWorkerService(
     {
         logger.LogInformation("[WORKER] Maintenance worker starting…");
 
-        var opts = rabbitMqOptions.Value;
+        var server = configuration["RabbitMQServer"] ?? "rabbitmq";
+        var port   = int.TryParse(configuration["RabbitMQPort"], out var p) ? p : 5672;
 
         logger.LogInformation(
-            "[WORKER] RabbitMQ config: Host={Host} Port={Port} Username={Username} PasswordConfigured={Pwd} VirtualHost={VHost}",
-            opts.Host, opts.Port, opts.Username, !string.IsNullOrWhiteSpace(opts.Password), opts.VirtualHost);
-
-        if (string.IsNullOrWhiteSpace(opts.Password))
-            throw new InvalidOperationException("RabbitMq:Password is not configured. Set the RabbitMq__Password environment variable.");
+            "[WORKER] RabbitMQ: Host={Host} Port={Port} AutomaticRecovery=True",
+            server, port);
 
         var factory = new ConnectionFactory
         {
-            HostName    = opts.Host,
-            Port        = opts.Port,
-            UserName    = opts.Username,
-            Password    = opts.Password,
-            VirtualHost = opts.VirtualHost
+            HostName                 = server,
+            Port                     = port,
+            AutomaticRecoveryEnabled = true
         };
 
         // Retry until RabbitMQ is reachable (Docker Swarm rolling-deploy grace)
