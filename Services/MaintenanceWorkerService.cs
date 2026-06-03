@@ -26,7 +26,7 @@ public sealed class MaintenanceWorkerService(
             HostName    = rmq["Host"]        ?? "rabbitmq",
             Port        = int.TryParse(rmq["Port"], out var p) ? p : 5672,
             UserName    = rmq["Username"]    ?? "guest",
-            Password    = rmq["Password"]    ?? "",
+            Password    = rmq["Password"]    ?? "guest",
             VirtualHost = rmq["VirtualHost"] ?? "/"
         };
 
