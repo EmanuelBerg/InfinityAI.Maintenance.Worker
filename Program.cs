@@ -1,4 +1,5 @@
 using InfinityAI.Maintenance.Worker.Data;
+using InfinityAI.Maintenance.Worker.Models;
 using InfinityAI.Maintenance.Worker.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,6 +15,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<WorkerDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
+builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection("RabbitMq"));
 builder.Services.AddHostedService<MaintenanceWorkerService>();
 
 var host = builder.Build();

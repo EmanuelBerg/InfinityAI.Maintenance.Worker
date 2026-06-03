@@ -4,6 +4,7 @@ using InfinityAI.Maintenance.Worker.Data;
 using InfinityAI.Maintenance.Worker.Models;
 using InfinityAI.Maintenance.Worker.Services.Handlers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -11,7 +12,7 @@ namespace InfinityAI.Maintenance.Worker.Services;
 
 public sealed class MaintenanceWorkerService(
     IServiceScopeFactory scopeFactory,
-    IConfiguration configuration,
+    IOptions<RabbitMqOptions> rabbitMqOptions,
     ILogger<MaintenanceWorkerService> logger) : BackgroundService
 {
     private const string QueueName = "maintenance-jobs";
@@ -20,14 +21,22 @@ public sealed class MaintenanceWorkerService(
     {
         logger.LogInformation("[WORKER] Maintenance worker starting…");
 
-        var rmq     = configuration.GetSection("RabbitMq");
+        var opts = rabbitMqOptions.Value;
+
+        logger.LogInformation(
+            "[WORKER] RabbitMQ config: Host={Host} Port={Port} Username={Username} PasswordConfigured={Pwd} VirtualHost={VHost}",
+            opts.Host, opts.Port, opts.Username, !string.IsNullOrWhiteSpace(opts.Password), opts.VirtualHost);
+
+        if (string.IsNullOrWhiteSpace(opts.Password))
+            throw new InvalidOperationException("RabbitMq:Password is not configured. Set the RabbitMq__Password environment variable.");
+
         var factory = new ConnectionFactory
         {
-            HostName    = rmq["Host"]        ?? "rabbitmq",
-            Port        = int.TryParse(rmq["Port"], out var p) ? p : 5672,
-            UserName    = rmq["Username"]    ?? "guest",
-            Password    = rmq["Password"]    ?? "guest",
-            VirtualHost = rmq["VirtualHost"] ?? "/"
+            HostName    = opts.Host,
+            Port        = opts.Port,
+            UserName    = opts.Username,
+            Password    = opts.Password,
+            VirtualHost = opts.VirtualHost
         };
 
         // Retry until RabbitMQ is reachable (Docker Swarm rolling-deploy grace)
