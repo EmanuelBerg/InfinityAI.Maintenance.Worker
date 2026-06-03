@@ -18,7 +18,7 @@ public sealed class WorkerDbContext(DbContextOptions<WorkerDbContext> options) :
         {
             entity.HasKey(x => x.Id);
             entity.Property(x => x.JobType).HasConversion<string>().HasMaxLength(64).IsRequired();
-            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(32).IsRequired().HasDefaultValue("Pending");
+            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(32).IsRequired().HasDefaultValue(MaintenanceJobStatus.Pending);
             entity.Property(x => x.ResultSummary).HasColumnType("longtext");
             entity.Property(x => x.ErrorMessage).HasColumnType("longtext");
             entity.ToTable("MaintenanceJobs");
