@@ -33,6 +33,14 @@ public sealed class Document
     public string Status       { get; set; } = "";
 }
 
+public sealed class MaintenanceWorkerHeartbeat
+{
+    public string   WorkerName    { get; set; } = "default";
+    public DateTime LastSeenUtc   { get; set; }
+    public string   CurrentStatus { get; set; } = "Idle";
+    public Guid?    CurrentJobId  { get; set; }
+}
+
 // Message received from RabbitMQ — JobType is string for cross-service interop
 public sealed class MaintenanceJobMessage
 {

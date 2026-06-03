@@ -5,9 +5,10 @@ namespace InfinityAI.Maintenance.Worker.Data;
 
 public sealed class WorkerDbContext(DbContextOptions<WorkerDbContext> options) : DbContext(options)
 {
-    public DbSet<MaintenanceJob> MaintenanceJobs => Set<MaintenanceJob>();
-    public DbSet<StoredFile>     StoredFiles     => Set<StoredFile>();
-    public DbSet<Document>       Documents       => Set<Document>();
+    public DbSet<MaintenanceJob>             MaintenanceJobs  => Set<MaintenanceJob>();
+    public DbSet<StoredFile>                 StoredFiles      => Set<StoredFile>();
+    public DbSet<Document>                   Documents        => Set<Document>();
+    public DbSet<MaintenanceWorkerHeartbeat> WorkerHeartbeats => Set<MaintenanceWorkerHeartbeat>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -37,6 +38,14 @@ public sealed class WorkerDbContext(DbContextOptions<WorkerDbContext> options) :
         {
             entity.HasKey(x => x.Id);
             entity.ToTable("Documents");
+        });
+
+        builder.Entity<MaintenanceWorkerHeartbeat>(entity =>
+        {
+            entity.HasKey(x => x.WorkerName);
+            entity.Property(x => x.WorkerName).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.CurrentStatus).HasMaxLength(32).IsRequired();
+            entity.ToTable("MaintenanceWorkerHeartbeats");
         });
     }
 }

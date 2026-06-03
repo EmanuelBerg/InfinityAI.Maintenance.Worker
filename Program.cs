@@ -14,6 +14,9 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<WorkerDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
+builder.Services.AddHttpClient<SignalRNotificationClient>();
+builder.Services.AddSingleton<HeartbeatService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<HeartbeatService>());
 builder.Services.AddHostedService<MaintenanceWorkerService>();
 
 var host = builder.Build();

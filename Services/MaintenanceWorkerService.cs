@@ -12,6 +12,8 @@ namespace InfinityAI.Maintenance.Worker.Services;
 public sealed class MaintenanceWorkerService(
     IServiceScopeFactory scopeFactory,
     IConfiguration configuration,
+    HeartbeatService heartbeat,
+    SignalRNotificationClient signalR,
     ILogger<MaintenanceWorkerService> logger) : BackgroundService
 {
     private const string QueueName = "maintenance-jobs";
@@ -117,6 +119,8 @@ public sealed class MaintenanceWorkerService(
         job.Status     = MaintenanceJobStatus.Running;
         job.StartedUtc = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
+        await heartbeat.UpdateAsync("Processing", job.Id, ct);
+        await signalR.NotifyJobUpdatedAsync(job, ct);
 
         try
         {
@@ -134,6 +138,8 @@ public sealed class MaintenanceWorkerService(
         }
 
         await db.SaveChangesAsync(ct);
+        await heartbeat.UpdateAsync("Idle", null, ct);
+        await signalR.NotifyJobUpdatedAsync(job, ct);
     }
 
     private async Task<string?> DispatchAsync(
