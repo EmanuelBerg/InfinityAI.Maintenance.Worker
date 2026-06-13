@@ -81,8 +81,30 @@ public sealed class MaintenanceWorkerService(
                     return;
                 }
 
-                await ProcessMessageAsync(msg, stoppingToken);
-                await channel.BasicAckAsync(ea.DeliveryTag, multiple: false);
+                try
+                {
+                    await ProcessMessageAsync(msg, stoppingToken);
+                    await channel.BasicAckAsync(ea.DeliveryTag, multiple: false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Service shutting down — leave message unacked so RabbitMQ re-delivers on restart.
+                    return;
+                }
+                catch (Exception ex) when (IsTransientInfrastructureFailure(ex))
+                {
+                    logger.LogWarning(ex,
+                        "[REQUEUE] Transient infrastructure failure for job {JobId} ({JobType}) — requeueing",
+                        msg.JobId, msg.JobType);
+                    await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: true);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex,
+                        "[WORKER] Unexpected failure for job {JobId} ({JobType}) — discarding to prevent infinite loop",
+                        msg.JobId, msg.JobType);
+                    await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: false);
+                }
             };
 
             await channel.BasicConsumeAsync(QueueName, autoAck: false, consumer: consumer, stoppingToken);
@@ -194,4 +216,14 @@ public sealed class MaintenanceWorkerService(
         await Task.CompletedTask;
         return """{"ScanType":"SessionCleanup","Note":"Handled by Api SessionCleanupService"}""";
     }
+
+    // Returns true for transient infrastructure errors that warrant requeueing the message.
+    // Returns false for permanent errors (bad data, unknown job type) that should be discarded.
+    private static bool IsTransientInfrastructureFailure(Exception ex) =>
+        ex is TimeoutException
+            or System.IO.IOException
+            or System.Net.Http.HttpRequestException
+            or Microsoft.EntityFrameworkCore.DbUpdateException
+            or MySqlConnector.MySqlException
+        || (ex.InnerException is not null && IsTransientInfrastructureFailure(ex.InnerException));
 }
