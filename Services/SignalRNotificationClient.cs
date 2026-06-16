@@ -9,8 +9,9 @@ public sealed class SignalRNotificationClient(
     IConfiguration configuration,
     ILogger<SignalRNotificationClient> logger)
 {
-    private string BaseUrl => configuration["SignalR__BaseUrl"] ?? "http://infinityai-signalr:8080";
-    private string? InternalKey => configuration["SignalR__InternalKey"];
+    // .NET configuration maps env var SignalR__BaseUrl → SignalR:BaseUrl (__ → :)
+    private string  BaseUrl     => configuration["SignalR:BaseUrl"]     ?? "http://infinityai-signalr:8080";
+    private string? InternalKey => configuration["SignalR:InternalKey"];
 
     public async Task NotifyJobUpdatedAsync(MaintenanceJob job, CancellationToken ct = default)
     {
